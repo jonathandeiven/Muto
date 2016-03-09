@@ -28,6 +28,14 @@
  *  
  ***********************************/
 
+//Serialization from _____
+typedef struct joyReport_t {
+    int16_t axis[8];
+    uint8_t button[5]; // 8 buttons per byte
+} joyReport_t;
+
+joyReport_t joyReport;
+
 //Struct for module pins
 struct Module
 {
@@ -74,10 +82,28 @@ struct ButtonMap
   int btnY     = 10;
 } buttonMap;
 
+//Forward function declarations
+void setup(void);
+void loop(void);
+void setButton(joyReport_t *joy, uint8_t button);
+void clearButton(joyReport_t *joy, uint8_t button);
+void sendJoyReport(joyReport_t *report);
+void sendButton(joyReport_t *joy, uint8_t button, int value);
+
 // the setup routine runs once when you press reset:
 void setup() {
   // initialize serial communication at 9600 bits per second:
-  Serial.begin(9600);
+  Serial.begin(115200);
+  delay(200);
+
+
+  for (uint8_t ind=0; ind<8; ind++) {
+      joyReport.axis[ind] = ind*1000;
+  }
+    
+  for (uint8_t ind=0; ind<sizeof(joyReport.button); ind++) {
+        joyReport.button[ind] = 0;
+  }
 
   /*******************
    *    SET PINS
@@ -211,46 +237,72 @@ void loop() {
   controllerState.dirRight = digitalRead(controller.dirRight);
 
   //Read digital button pins
-  controllerState.btnA = digitalRead(32);
-  controllerState.btnB = digitalRead(33);
-  controllerState.btnX = digitalRead(34);
-  controllerState.btnY = digitalRead(35);
+  controllerState.btnA = digitalRead(controller.btnA);
+  controllerState.btnB = digitalRead(controller.btnB);
+  controllerState.btnX = digitalRead(controller.btnX);
+  controllerState.btnY = digitalRead(controller.btnY);
 
   //Read digital home button pin
   controllerState.btnHome = digitalRead(controller.btnHome);
 
-  // Print feedback of inputs for debugging
-  Serial.print("Triggers Left: " );
-  Serial.print(controllerState.triggerL);
-  Serial.print(" Right: ");
-  Serial.print(controllerState.triggerR);
-  Serial.print(" | D-Pad Left: ");
-  Serial.print( controllerState.dirLeft);
-  Serial.print(" Up: ");
-  Serial.print(controllerState.dirUp);
-  Serial.print(" Down: ");
-  Serial.print(controllerState.dirDown);
-  Serial.print(" Right: ");
-  Serial.println(controllerState.dirRight);
-  Serial.print("Face A: ");
-  Serial.print(controllerState.btnA);
-  Serial.print(" B: ");
-  Serial.print(controllerState.btnB);
-  Serial.print(" X: ");
-  Serial.print(controllerState.btnX);
-  Serial.print(" Y: ");
-  Serial.print(controllerState.btnY);
-  Serial.print(" | Home: ");
-  Serial.print(controllerState.btnHome);
-  Serial.print(" | Analogs X1: ");
-  Serial.print(controllerState.LX);
-  Serial.print(" Y1: ");
-  Serial.print(controllerState.LY);
-  Serial.print(" X2: ");
-  Serial.print(controllerState.RX);
-  Serial.print(" Y2: ");
-  Serial.println(controllerState.RY);
-  Serial.println(" ");
+  /*****************
+   * SERIALIZATION
+   ****************/
+  //Set joystick value 
+  joyReport.axis[0] = controllerState.LX;
+  joyReport.axis[1] = controllerState.LY;
+  joyReport.axis[2] = controllerState.RX;
+  joyReport.axis[3] = controllerState.RY;
+
+  //Send the button values
+  sendButton(&joyReport, buttonMap.dirUp,    controllerState.dirUp);
+  sendButton(&joyReport, buttonMap.dirDown,  controllerState.dirDown);
+  sendButton(&joyReport, buttonMap.dirLeft,  controllerState.dirLeft);
+  sendButton(&joyReport, buttonMap.dirRight, controllerState.dirRight);
+  sendButton(&joyReport, buttonMap.btnA,     controllerState.btnA);
+  sendButton(&joyReport, buttonMap.btnB,     controllerState.btnB);
+  sendButton(&joyReport, buttonMap.btnX,     controllerState.btnX);
+  sendButton(&joyReport, buttonMap.btnY,     controllerState.btnY);
+  sendButton(&joyReport, buttonMap.triggerL, controllerState.triggerL);
+  sendButton(&joyReport, buttonMap.triggerR, controllerState.triggerR);
+  sendButton(&joyReport, buttonMap.btnHome,  controllerState.btnHome);
   
-  delay(1000);        // delay in between reads for stability
+  //Send report serialization
+  sendJoyReport(&joyReport);
+  
+  delay(100);        // delay in between reads for stability
 }
+
+// configure buttons
+void sendButton(joyReport_t *joy, uint8_t button, int value)
+{
+  if (value == 1) {
+    setButton(&joyReport, button);
+  } else {
+    clearButton(&joyReport, button);
+  }
+}
+
+// turn a button on
+void setButton(joyReport_t *joy, uint8_t button)
+{
+    uint8_t index = button/8;
+    uint8_t bit = button - 8*index;
+
+    joy->button[index] |= 1 << bit;
+}
+
+// turn a button off
+void clearButton(joyReport_t *joy, uint8_t button)
+{
+    uint8_t index = button/8;
+    uint8_t bit = button - 8*index;
+
+    joy->button[index] &= ~(1 << bit);
+}
+
+void sendJoyReport(struct joyReport_t *report)
+{
+  Serial.write((uint8_t *)report, sizeof(joyReport_t));
+}
+
