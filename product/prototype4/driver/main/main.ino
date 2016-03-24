@@ -130,18 +130,18 @@ void setup() {
   module2.pinA2   = A5;
 
   //Module 3 (Top Right)
-  module3.pinDet1 = 51;
-  module3.pinDet2 = 50;
-  module3.pinD1   = 49;
-  module3.pinD2   = 48;
-  module3.pinD3   = 47;
-  module3.pinD4   = 46;
+  module3.pinDet1 = 53;
+  module3.pinDet2 = 52;
+  module3.pinD1   = 51;
+  module3.pinD2   = 50;
+  module3.pinD3   = 49;
+  module3.pinD4   = 48;
   module3.pinA1   = A0;
   module3.pinA2   = A1;
 
   //Module 4 (Bottom Right)
-  module4.pinDet1 = 1;
-  module4.pinDet2 = 0;
+  module4.pinDet1 = 41;
+  module4.pinDet2 = 40;
   module4.pinD1   = 3;
   module4.pinD2   = 2;
   module4.pinD3   = 5;
@@ -249,10 +249,10 @@ void loop() {
    * SERIALIZATION
    ****************/
   //Set joystick value 
-  joyReport.axis[0] = controllerState.LX;
-  joyReport.axis[1] = controllerState.LY;
-  joyReport.axis[2] = controllerState.RX;
-  joyReport.axis[3] = controllerState.RY;
+  joyReport.axis[0] = map(controllerState.LX, 0, 1023, -32768, 32767);
+  joyReport.axis[1] = map(controllerState.LY, 0, 1023, -32768, 32767);
+  joyReport.axis[2] = map(controllerState.RX, 0, 1023, -32768, 32767);
+  joyReport.axis[3] = map(controllerState.RY, 0, 1023, -32768, 32767);
 
   //Send the button values
   sendButton(&joyReport, buttonMap.dirUp,    controllerState.dirUp);
@@ -303,6 +303,6 @@ void clearButton(joyReport_t *joy, uint8_t button)
 
 void sendJoyReport(struct joyReport_t *report)
 {
-  Serial.write((uint8_t *)report, sizeof(joyReport_t));
+    Serial.write((uint8_t *)report, sizeof(joyReport_t));
 }
 
